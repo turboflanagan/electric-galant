@@ -1,109 +1,76 @@
 var express = require('express');
 var router = express.Router();
-var MongoClient = require('mongodb').MongoClient;
-var db;
 var mongoose = require('mongoose');
-mongoose.connect(mongoUrl);
 var Photo = require('../models/photos');
+var Users = require('../models/users');
 
 var mongoUrl = 'mongodb://localhost:27017/Galant';
+mongoose.connect(mongoUrl);
+var db;
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
-	MongoClient.connect(mongoUrl, function(error, db){
-		//1. Get all pictures from the MongoDB
-		var currIP = req.ip;
-		db.collection('users').find({ip: currIP}).toArray(function(error, userResult){
-			//2. Get the current user from MongoDB vai req.ip
-			// console.log("userResult");
-			var photosVoted = [];
-			for(i=0;i<userResult.length;i++){
-				photosVoted.push(userResult[i]);
-			}
 
-			db.collection('photos').find({photo: {$nin: photosVoted}}).toArray(function(error, result){
-				var rand = Math.floor(Math.random() * result.length);
-				if(result.length == 0){
-					res.render('standings', {photo: result[rand]});
+router.get('/photos/get', function(req, res, next) {
+	Photo.find(function(err, photosResult){
+		if(err){
+			console.log(err);
+		}else{
+			res.json(photosResult);
+		};
+	});
+});
+
+router.post('/photos/post', function (req, res, next){
+	var photo = new Photo();
+	photo.image = req.body.image;
+	photo.totalVotes = 0;
+
+	photo.save(function(err){
+		if(err){
+			console.log(err);
+		}else{
+			res.json({message: 'Photo added!'});
+		};
+	});
+});
+
+router.put('/photos/update', function(req, res, next){
+	photo.findById(req.params.photo_id, function (err, photosResult){
+		if(err){
+			console.log(err);
+		}else{
+			photosResult.image = req.params.photo; //Changes the property of the object we got from Mongo
+			photosResult.save(funcion(err){
+				if(err){
+					console.log(err);
 				}else{
-					// console.log(result.length);
-					// console.log(rand);
-					res.render('index', {photo: result[rand]});
-				};
+					res.json({message:'Photo was updated!'});
+				}
 			});
-		});	
-	});	
-});
+		}
 
-router.get('/standings', function(req, res, next) {
-	//1. get ALL the photos
-	//2. Sort them by highest likes
-	//3. res.render the standings view and pass it the sorted photo array 
-
-	MongoClient.connect(mongoUrl, function(error, db){
-		//1. Get all pictures from the MongoDB
-		db.collection('photos').find().toArray(function(error, result){
-			//Pass all votes
-
-			result.sort(function(p1, p2){
-				return (p2.totalVotes - p1.totalVotes);
-			});
-
-			res.render('standings', {photosStandings: result});
-
-		});	
 	});
 });
 
-//add a page for user to add new images to vote on
-router.get('/new', function(req, res, next) {
-	MongoClient.connect(mongoUrl, function(error, db){
-		
-		res.render('add');
+router.delete('/photos/delete', function(req, res, next){
+	Photo.remove({
+		_id: req.params.photo_id
+	}, function(err, photo){
+		if(err){
+			console.log(err);
+		}else{
+			res.json({message: "Successfully deleted!"});
+		};
 	});
 });
 
-router.post('*', function(req,res,next){
-	if(req.url == '/electric'){
-		var page = 'electric';
-	}else if(req.url == '/poser'){
-		var page = 'poser';
-	}else{
-		res.redirect('/');
-	};
-
-	MongoClient.connect(mongoUrl, function(error, db){
-		db.collection('photos').find({pic: req.body.photo}).toArray(function(error, result){
-			var updateVotes = function(db, votes, callback) {
-				if(page=='electric'){var newVotes = votes+1;}
-				else{var newVotes = votes-1;}
-				
-			   db.collection('photos').updateOne(
-			      { "pic" : req.body.photo },
-			      {
-			        $set: { "totalVotes": newVotes },
-			        $currentDate: { "lastModified": true }
-			      }, function(err, results) {
-			      // console.log(results);
-			      callback();
-			   });
-			};
-
-			MongoClient.connect(mongoUrl, function(error, db) {
-				updateVotes(db,result[0].totalVotes, function() {});
-			});
-		});
-	});	
-
-	MongoClient.connect(mongoUrl, function(error, db){
-
-		db.collection('users').insertOne( {
-	    	ip: req.ip,
-	    	vote: page,
-	    	image: req.body.photo
-		});
-		res.redirect('/');
-	});	
+router.get('/users/get', function(req, res, next) {
+	Users.find(function(err, usersResult){
+		if(err){
+			console.log(err);
+		}else{
+			res.json(usersResult);
+		}
+	});
 });
 
 

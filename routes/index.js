@@ -59,7 +59,7 @@ router.get('/new', function(req, res, next) {
 	});
 });
 
-router.post('*', function(req,res,next){
+router.post('/electric', function(req,res,next){
 	if(req.url == '/electric'){
 		var page = 'electric';
 	}else if(req.url == '/poser'){
